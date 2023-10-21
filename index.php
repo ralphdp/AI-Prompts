@@ -6,26 +6,12 @@ Version: 1.0
 Author: Rafael De Paz
 */
 
-//ini_set("display_errors", 1);
-//ini_set("display_startup_errors", 1);
-//error_reporting(E_ALL);
+function enqueue_load_fa()
+{
+	wp_enqueue_style("load-fa", "https://use.fontawesome.com/releases/v5.5.0/css/all.css");
+}
 
-/*
-add_filter( 'plugin_action_links_' . plugin_basename(__FILE__), 'apd_settings_link' );
-function apd_settings_link( array $links ) {
-	$url = get_admin_url() . "admin.php?page=prompt_listings_page_settings";
-	$settings_link = '<a href="' . $url . '">' . __('Settings', 'textdomain') . '</a>';
-	  $links[] = $settings_link;
-	return $links;
-  }
-*/
-
-//function enqueue_load_fa()
-//{
-//wp_enqueue_style("load-fa", "https://use.fontawesome.com/releases/v5.5.0/css/all.css");
-//}
-
-//add_action("wp_enqueue_scripts", "enqueue_load_fa");
+add_action("wp_enqueue_scripts", "enqueue_load_fa");
 
 // Register the custom post type
 function prompts_custom_post_type()
@@ -128,7 +114,6 @@ function prompts_save_custom_field_data($post_id)
 		$prompt_author = sanitize_text_field($_POST["prompt_author_field"]);
 		update_post_meta($post_id, "prompt_author", $prompt_author);
 	}
-
 	if (!isset($_POST["prompt_note_nonce"])) {
 		return;
 	}
@@ -200,30 +185,14 @@ function list_prompts_shortcode()
 			$prompts->the_post();
 			$content = get_the_content();
 			$stripped = strip_tags($content, "<p> <a>"); //replace <p> and <a> with whatever tags you want to keep after the strip
-
 			echo "<div class='entry'>";
-
 			echo "<button class='' onclick='copyToClipboard(this)' value='" . $stripped . "'><i class='far fa-copy' title='Copy prompt.'></i></button>";
 			the_title("<h2>", "</h2>");
-
 			$featured_img_url = get_the_post_thumbnail_url(get_the_ID(), "full");
-
-			//add_image_size("custom-size", 800, 250, true);
-
-			echo "<div style='background-image: url($featured_img_url)'>";
-			//echo get_the_post_thumbnail(get_the_ID(), "custom-size");
-			echo "</div>";
-			//echo "<img src='$featured_img_url' alt=''/>";
-
-			/*
-			echo "<input type='text' name='' value='";
-			the_title("", "");
-			echo "' disabled readonly/>";
-			*/
+			echo "<div style='background-image: url($featured_img_url)'></div>";
 			echo "<textarea class='example' id='" . get_the_ID() . "' readonly>";
 			echo $stripped;
 			echo "</textarea>";
-
 			echo "<small>ID# ";
 			the_id();
 			echo " - Author: " . get_post_meta(get_the_ID(), "prompt_author", true) . " | " . get_post_meta(get_the_ID(), "prompt_note", true) . "</small></div>";
@@ -250,7 +219,6 @@ function list_prompts_shortcode()
 
 	if ($total_pages > 1) {
 		$current_page = max(1, get_query_var("paged"));
-
 		echo paginate_links([
 			"base" => get_pagenum_link(1) . "%_%",
 			"format" => "/page/%#%",
@@ -262,31 +230,6 @@ function list_prompts_shortcode()
 	}
 
 	wp_reset_postdata();
-
 	return ob_get_clean();
 }
-
-/*
-if($_GET['page'] === 'prompt_listings_page_settings'){
-	echo '...';
-}
-*/
-
-/*
-add_action('admin_menu', 'my_settings_plugin_add_page');
-function my_settings_plugin_add_page() {
-	add_options_page(
-		'My Settings Plugin',  // Page title
-		'My Settings Plugin',  // Menu title
-		'manage_options',     // Capability required to access the page
-		'my-settings-plugin', // Menu slug (must be unique)
-		'my_settings_plugin_display' // Callback function to display the page content
-	);
-}
-
-function my_settings_plugin_display() {
-	
-	echo '...';
-	
-}
-*/
+?>
