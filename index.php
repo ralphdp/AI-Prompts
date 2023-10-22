@@ -80,6 +80,12 @@ add_action("add_meta_boxes", "prompts_add_custom_field");
 // Render the custom field
 function prompts_render_custom_field($post)
 {
+	wp_nonce_field(basename(__FILE__), "prompt_prompt_nonce");
+	$prompt_prompt = get_post_meta($post->ID, "prompt_prompt", true);
+	echo "<label for='prompt_prompt_field'></label> <input type='text' id='prompt_prompt_field' name='prompt_prompt_field' value='" . esc_attr($prompt_prompt) . "' size='25' placeholder='Prompt'/>";
+
+	echo "<hr/>";
+
 	wp_nonce_field(basename(__FILE__), "prompt_author_nonce");
 	$prompt_author = get_post_meta($post->ID, "prompt_author", true);
 	echo "<label for='prompt_author_field'></label> <input type='text' id='prompt_author_field' name='prompt_author_field' value='" . esc_attr($prompt_author) . "' size='25' placeholder='Author Name'/>";
@@ -95,6 +101,25 @@ function prompts_render_custom_field($post)
 add_action("save_post", "prompts_save_custom_field_data");
 function prompts_save_custom_field_data($post_id)
 {
+	if (!isset($_POST["prompt_prompt_nonce"])) {
+		return;
+	}
+	if (!wp_verify_nonce($_POST["prompt_prompt_nonce"], basename(__FILE__))) {
+		return;
+	}
+	if (defined("DOING_AUTOSAVE") && DOING_AUTOSAVE) {
+		return;
+	}
+	if (isset($_POST["post_type"]) && "ai-prompts" == $_POST["post_type"]) {
+		if (!current_user_can("edit_post", $post_id)) {
+			return;
+		}
+		if (!isset($_POST["prompt_prompt_field"])) {
+			return;
+		}
+		$prompt_prompt = sanitize_text_field($_POST["prompt_prompt_field"]);
+		update_post_meta($post_id, "prompt_prompt", $prompt_prompt);
+	}
 	if (!isset($_POST["prompt_author_nonce"])) {
 		return;
 	}
@@ -154,22 +179,37 @@ function list_prompts_shortcode()
 	 .entry:hover{
 		border:2px #f8f8f8 solid;
 	 }
+	 
+	 .entry button{
+		 float:right;
+		 padding:0px;
+		 font-size:90%; 
+	  }
+	  
+	  .entry button i{
+		color:#555;  
+	  }
+
+	 .entry p span{
+		  display:block;
+			  padding:5px;
+			  background:#f8f8f8;
+				  border:1px #efefef solid;
+					  
+	   }	  
+	  
 	 .entry div {
+		margin:0px 0px 15px 0px;
 		width: 100%;
 		height: 300px;
 		box-shadow: inset 0px 0px 10px rgba(0,0,0,0.9);
 		background-repeat: no-repeat;
 		background-position: center bottom;
-		border-top-left-radius: 3px;
-		border-top-right-radius: 3px;
+		border-radius: 5px;
 	 }
+
 	 textarea {
 		resize: vertical; /* user can resize vertically, but width is fixed */
-	 }
-	 button{
-		float:right;
-		padding:0px;
-		font-size:90%; 
 	 }
 	</style>
 	";
@@ -185,14 +225,25 @@ function list_prompts_shortcode()
 			$prompts->the_post();
 			$content = get_the_content();
 			$stripped = strip_tags($content, "<p> <a>"); //replace <p> and <a> with whatever tags you want to keep after the strip
+
+			$prompt = get_post_meta(get_the_ID(), "prompt_prompt", true);
+
 			echo "<div class='entry'>";
-			echo "<button class='' onclick='copyToClipboard(this)' value='" . $stripped . "'><i class='far fa-copy' title='Copy prompt.'></i></button>";
+			echo "<button class='' onclick='copyToClipboard(this)' value='" . $prompt . "'><i class='far fa-copy fa-2x' title='Copy prompt.'></i></button>";
 			the_title("<h2>", "</h2>");
+			echo "<p><span><small>" . $prompt . "</small></span></p>";
+
 			$featured_img_url = get_the_post_thumbnail_url(get_the_ID(), "full");
-			echo "<div style='background-image: url($featured_img_url)'></div>";
-			echo "<textarea class='example' id='" . get_the_ID() . "' readonly>";
-			echo $stripped;
-			echo "</textarea>";
+			if ($featured_img_url != "") {
+				echo "<div style='background-image: url($featured_img_url)'></div>";
+			}
+
+			if ($stripped != "") {
+				echo "<textarea class='example' id='" . get_the_ID() . "' readonly>";
+				echo $stripped;
+				echo "</textarea>";
+			}
+
 			echo "<small>ID# ";
 			the_id();
 			echo " - Author: " . get_post_meta(get_the_ID(), "prompt_author", true) . " | " . get_post_meta(get_the_ID(), "prompt_note", true) . "</small></div>";
@@ -207,7 +258,7 @@ function list_prompts_shortcode()
 			const valueToCopy = btn.value;
 			navigator.clipboard.writeText(valueToCopy).then(() => {
 			console.log('Copied prompt to clipboard.');
-			btn.innerHTML = '<i class=\'fas fa-copy\' title=\'Prompt copied.\'></i>';
+			btn.innerHTML = '<i class=\'fas fa-copy fa-2x\' title=\'Prompt copied.\'></i>';
 		})
 		.catch((error) => {
 			console.error('Error copying prompt to clipboard.');
@@ -219,14 +270,34 @@ function list_prompts_shortcode()
 
 	if ($total_pages > 1) {
 		$current_page = max(1, get_query_var("paged"));
-		echo paginate_links([
+		//echo "<ul class='page-numbers nav-pagination links text-center'>";
+		$pages = paginate_links([
 			"base" => get_pagenum_link(1) . "%_%",
-			"format" => "/page/%#%",
-			"current" => $current_page,
+			"format" => "page/%#%",
+			"current" => "" . $current_page . "",
 			"total" => $total_pages,
-			"prev_text" => __("« prev"),
-			"next_text" => __("next »"),
+			"prev_text" => __("<i class='icon-angle-left'></i>"),
+			"next_text" => __("<i class='icon-angle-right'></i>"),
+			"type" => "array",
 		]);
+		//echo "</ul>";
+	}
+
+	if (is_array($pages)) {
+		$paged = get_query_var("paged") == 0 ? 1 : get_query_var("paged"); ?>
+			<ul class="page-numbers nav-pagination links text-center"><?php
+   if ($wp_query->max_num_pages > 1 && $paged === 1) { ?>
+					<?php }
+
+   foreach ($pages as $page) {
+   	echo "<li style='margin-left:5px;'>" . str_replace("page-numbers", "page-number", $page) . "</li>";
+   }
+
+   if ($wp_query->max_num_pages == max(1, get_query_var("paged"))) { ?>
+					<?php }
+   ?>
+			</ul>
+		<?php
 	}
 
 	wp_reset_postdata();
