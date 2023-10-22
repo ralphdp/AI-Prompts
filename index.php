@@ -270,7 +270,6 @@ function list_prompts_shortcode()
 
 	if ($total_pages > 1) {
 		$current_page = max(1, get_query_var("paged"));
-		//echo "<ul class='page-numbers nav-pagination links text-center'>";
 		$pages = paginate_links([
 			"base" => get_pagenum_link(1) . "%_%",
 			"format" => "page/%#%",
@@ -280,7 +279,6 @@ function list_prompts_shortcode()
 			"next_text" => __("<i class='icon-angle-right'></i>"),
 			"type" => "array",
 		]);
-		//echo "</ul>";
 	}
 
 	if (is_array($pages)) {
